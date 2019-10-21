@@ -1,0 +1,223 @@
+#include "LedControl.h"
+//#include <ArduinoSTL.h>
+#define Collapse field[Bullets[i].device][Bullets[i].x][Bullets[i].y]
+
+short up_button = 2;
+short down_button = 4;
+short left_button = 5;
+short right_button = 3;
+short start_button = 6;
+short select_button = 7;
+short joystick_button = 8;
+short joystick_axis_x = A0;
+short joystick_axis_y = A1;
+short buttons[] = {up_button, down_button, left_button, right_button, start_button, select_button, joystick_button};
+
+using namespace std;
+
+struct Obj {
+  short x, y , device = 0;
+  bool visible = false;
+};
+
+Obj ship;
+bool shipIm[8][8] {   {0, 1, 0, 0, 0, 0, 0, 0},
+  {1, 1, 1, 0, 0, 0, 0, 0},
+  {0, 0, 0, 0, 0, 0, 0, 0},
+  {0, 0, 0, 0, 0, 0, 0, 0},
+  {0, 0, 0, 0, 0, 0, 0, 0},
+  {0, 0, 0, 0, 0, 0, 0, 0},
+  {0, 0, 0, 0, 0, 0, 0, 0},
+  {0, 0, 0, 0, 0, 0, 0, 0}
+};
+bool bulletIm[8][8] {   {1, 0, 0, 0, 0, 0, 0, 0},
+  {0, 0, 0, 0, 0, 0, 0, 0},
+  {0, 0, 0, 0, 0, 0, 0, 0},
+  {0, 0, 0, 0, 0, 0, 0, 0},
+  {0, 0, 0, 0, 0, 0, 0, 0},
+  {0, 0, 0, 0, 0, 0, 0, 0},
+  {0, 0, 0, 0, 0, 0, 0, 0},
+  {0, 0, 0, 0, 0, 0, 0, 0}
+};
+bool enemyIm[8][8] {   { 1, 0, 0, 0, 0, 0, 0, 0},
+  {0, 0, 0, 0, 0, 0, 0, 0},
+  {0, 0, 0, 0, 0, 0, 0, 0},
+  {0, 0, 0, 0, 0, 0, 0, 0},
+  {0, 0, 0, 0, 0, 0, 0, 0},
+  {0, 0, 0, 0, 0, 0, 0, 0},
+  {0, 0, 0, 0, 0, 0, 0, 0},
+  {0, 0, 0, 0, 0, 0, 0, 0}
+};
+bool field[4][8][8] ;
+Obj Bullets[15];
+Obj Enemies[15];
+LedControl lc = LedControl(11, 13, 10, 4 ); // DIN,CLK,CS,Number of LED Module
+unsigned long delaytime = 500 ; // time to updates of the display
+void setup() {
+  randomSeed(5);
+  for (short i; i < 7; i++)
+  {
+    pinMode(buttons[i], INPUT);
+    digitalWrite(buttons[i], HIGH);
+  }
+  Serial.begin(9600);
+  short devices = lc.getDeviceCount ();
+
+  for (short address = 0 ; address < devices; address ++) {
+    lc.shutdown(address, false);
+    lc.setIntensity(address, 8);
+    lc.clearDisplay(address);
+  }
+  ship.x = 6 ;
+  ship.y = 0;
+  for (int i = 1; i <= 5; i++) {
+    Obj enemy;
+    enemy.x = rand() % 7;
+    enemy.device = 4;
+    enemy.y = rand() % 7;
+    enemy.visible = true;
+    Dis(enemy, 2);
+    Enemies[i] = enemy;
+    field[Enemies[i].device][Enemies[i].x][Enemies[i].y] = 1;
+  }
+  auto  a = 0x99;
+  while (a) {
+    Serial.print(bitRead(a >> 1) & 1);
+    a >> 1;
+  }
+}
+
+long debo = 0;
+long Bdebo = 0;
+void loop() {
+  short devices = lc.getDeviceCount ();
+  // Bullet Move
+  for (short i = 1; i <= 3; i++) {
+    if (Bullets[i].visible) {
+      Del(Bullets[i], 1);
+      Bullets[i].x--;
+      if (Bullets[i].x == -1) {
+        Bullets[i].x = 7;
+        Bullets[i].device++;
+        if (Bullets[i].device >= 5)
+          Bullets[i].visible = false;
+      }
+      if (Collapse) {
+        Del(Bullets[i], 1);
+        Collapse = 0;
+        Bullets[i].visible = !Bullets[i].visible;
+      } else
+        Dis(Bullets[i], 1);
+    }
+  }
+  // Enemy Move
+  if (millis() - delaytime > 1000) {
+    for (short i = 1; i <= 5; i++) {
+      if (Enemies[i].visible) {
+        if (field[Enemies[i].device][Enemies[i].x][Enemies[i].y]) {
+          Del(Enemies[i], 2);
+          field[Enemies[i].device][Enemies[i].x][Enemies[i].y] = 0;
+          Enemies[i].x++;
+          int lr = random() % 2;
+          if (lr) Enemies[i].y++;
+          else Enemies[i].y--;
+
+          if (Enemies[i].y < 0) Enemies[i].y = 0;
+          if (Enemies[i].y > 7) Enemies[i].y = 7;
+
+          if (Enemies[i].x == 8) {
+            Enemies[i].x = 0;
+            Enemies[i].device--;
+            if (Enemies[i].device <= -1)
+              Enemies[i].visible = false;
+          }
+          field[Enemies[i].device][Enemies[i].x][Enemies[i].y] = 1;
+          Dis(Enemies[i], 2);
+        } else {
+          Del(Enemies[i], 2);
+          Enemies[i].visible = !Enemies[i].visible;
+        }
+      }
+      delaytime  = millis();
+    }
+  }
+  // Ship control
+  if (millis() - debo > 200) {
+    if (analogRead(joystick_axis_x) <= 300) { //  Left
+      debo = millis();
+      Del(ship, 0);
+      ship.y++;
+    } else if (analogRead(joystick_axis_x) >= 400) { // Right
+      debo = millis();
+      Del(ship, 0);
+      ship.y--;
+    }
+  }
+  Dis(ship, 0);
+  // firing
+  if (millis() - Bdebo > 200)
+    if (!digitalRead(right_button)) {
+      for (int i = 1 ; i <= 3 ; i++) {
+        if (!Bullets[i].visible) {
+          Bdebo = millis();
+          Obj bullet;
+          bullet.y = ship.y + 1;
+          bullet.x = 5;
+          bullet.visible = true;
+          Dis(bullet, 1);
+          Bullets[i] = bullet;
+          break;
+        }
+      }
+    }
+  //spawn new
+  for (int i = 1; i <= 5; i++) {
+    if (!Enemies[i].visible) {
+      Obj enemy;
+      enemy.x = rand() % 7;
+      enemy.device = 4;
+      enemy.y = rand() % 7;
+      enemy.visible = true;
+      Dis(enemy, 2);
+      Enemies[i] = enemy;
+      field[Enemies[i].device][Enemies[i].x][Enemies[i].y] = 1;
+    }
+  }
+  delay(100);
+
+}
+
+void Del(Obj o, short mode) {
+  for (short i = 0; i < 8; i++)
+    for (short j = 0; j < 8; j++) {
+      if (mode == 0)
+        if (shipIm[i][j]) {
+          lc.setLed(o.device, o.y + j, o.x + i, false);
+        }
+      if (mode == 1)
+        if (bulletIm[i][j]) {
+          lc.setLed(o.device, o.y + j, o.x + i, false);
+        }
+      if (mode == 2)
+        if (enemyIm[i][j]) {
+          lc.setLed(o.device, o.y + j, o.x + i, false);
+        }
+    }
+}
+void Dis(Obj o, short mode) {
+  for (short i = 0; i < 8; i++)
+    for (short j = 0; j < 8; j++) {
+      if (mode == 0)
+        if (shipIm[i][j]) {
+          lc.setLed(o.device, o.y + j, o.x + i, true);
+        }
+      if (mode == 1)
+        if (bulletIm[i][j]) {
+          lc.setLed(o.device, o.y + j, o.x + i, true);
+        }
+      if (mode == 2)
+        if (enemyIm[i][j]) {
+          lc.setLed(o.device, o.y + j, o.x + i, true);
+        }
+    }
+}

@@ -1,0 +1,148 @@
+#include "LedControl.h"
+#include <ArduinoSTL.h>
+
+short up_button = 2;
+short down_button = 4;
+short left_button = 5;
+short right_button = 3;
+short start_button = 6;
+short select_button = 7;
+short joystick_button = 8;
+short joystick_axis_x = A0;
+short joystick_axis_y = A1;
+short buttons[] = {up_button, down_button, left_button, right_button, start_button, select_button, joystick_button};
+
+using namespace std;
+
+struct Obj {
+  short x, y , device = 0;
+};
+
+Obj ship;
+short shipIm[8][8] {   {0, 1, 0, 0, 0, 0, 0, 0},
+  {1, 1, 1, 0, 0, 0, 0, 0},
+  {0, 0, 0, 0, 0, 0, 0, 0},
+  {0, 0, 0, 0, 0, 0, 0, 0},
+  {0, 0, 0, 0, 0, 0, 0, 0},
+  {0, 0, 0, 0, 0, 0, 0, 0},
+  {0, 0, 0, 0, 0, 0, 0, 0},
+  {0, 0, 0, 0, 0, 0, 0, 0}
+};
+short bulletIm[8][8] {   {0, 1, 0, 0, 0, 0, 0, 0},
+  {0, 0, 0, 0, 0, 0, 0, 0},
+  {0, 0, 0, 0, 0, 0, 0, 0},
+  {0, 0, 0, 0, 0, 0, 0, 0},
+  {0, 0, 0, 0, 0, 0, 0, 0},
+  {0, 0, 0, 0, 0, 0, 0, 0},
+  {0, 0, 0, 0, 0, 0, 0, 0},
+  {0, 0, 0, 0, 0, 0, 0, 0}
+};
+Obj Bullets[10]; short BuCount = 0 ;
+LedControl lc = LedControl(11, 13, 10, 4 ); // CLK,DIN,CS,Number of LED Module
+unsigned long delaytime = 500 ; // time to updates of the display
+void setup() {
+  for (short i; i < 7; i++)
+  {
+    pinMode(buttons[i], INPUT);
+    digitalWrite(buttons[i], HIGH);
+  }
+  Serial.begin(9600);
+  short devices = lc.getDeviceCount ();
+
+  for (short address = 0 ; address < devices; address ++) {
+    lc.shutdown(address, false);
+    lc.setIntensity(address, 8);
+    lc.clearDisplay(address);
+  }
+  ship.x = 6 ;
+  ship.y = 0;
+
+
+}
+
+long debo = 0;
+long Bdebo = 0;
+void loop() {
+  short devices = lc.getDeviceCount ();
+
+  for (short i = 0; i <= BuCount; i++) {
+    Del(Bullets[i],1);
+    Bullets[i].x--;
+    if (Bullets[i].x == -1) {
+      Bullets[i].x = 7;
+      Bullets[i].device++;
+    }
+    Dis(Bullets[i],1);
+  }
+
+
+  // Ship control
+  if (millis() - debo > 200) {
+    if (analogRead(joystick_axis_x) <= 300) { //  Left
+      debo = millis();
+      Del(ship,0);
+      ship.y++;
+    } else if (analogRead(joystick_axis_x) >= 400) { // Right
+      debo = millis();
+      Del(ship,0);
+      ship.y--;
+    }
+  }
+  Dis(ship,0);
+  if (millis() - Bdebo > 200)
+    if (!digitalRead(right_button)) {
+      Bdebo = millis();
+      Obj bullet;
+      bullet.y = ship.y;
+      bullet.x = 5;
+      bullet.image[0][0] = 1;
+      bullet.image[0][1] = 0;
+      bullet.image[1][0] = 0;
+      bullet.image[1][1] = 0;
+      bullet.image[1][2] = 0;
+      Dis(bullet,1);
+      Bullets[BuCount] = bullet; BuCount++;
+
+    }
+
+  Serial.print("UP = "), Serial.print(digitalRead(up_button)), Serial.print("\t");
+  Serial.print("DOWN = "), Serial.print(digitalRead(down_button)), Serial.print("\t");
+  Serial.print("LEFT = "), Serial.print(digitalRead(left_button)), Serial.print("\t");
+  Serial.print("RIGHT = "), Serial.print(digitalRead(right_button)), Serial.print("\t");
+  Serial.print("START = "), Serial.print(digitalRead(start_button)), Serial.print("\t");
+  Serial.print("SELECT = "), Serial.print(digitalRead(select_button)), Serial.print("\t");
+  Serial.print("ANALOG = "), Serial.print(digitalRead(joystick_button)), Serial.print("\t");
+  Serial.print("X = "), Serial.print(map(analogRead(joystick_axis_x), 0, 1000, -1, 1)); Serial.print("\t");
+  Serial.print("Y = "), Serial.print(map(analogRead(joystick_axis_y), 0, 1000, -1, 1)); Serial.print("\n");
+  Serial.print("X = "), Serial.print(analogRead(joystick_axis_x)); Serial.print("\t");
+  Serial.print("Y = "), Serial.print(analogRead(joystick_axis_y)); Serial.print("\n");
+  delay(100);
+
+}
+
+void Del(Obj o, short mode=0) {
+  for (short i = 0; i < 8; i++)
+    for (short j = 0; j < 8; j++) {
+      if (mode == 0)
+        if (shipIm[i][j]) {
+          lc.setLed(o.device, o.y + j, o.x + i, false);
+        }
+      if (mode == 1)
+        if (bulletIm[i][j]) {
+          lc.setLed(o.device, o.y + j, o.x + i, false);
+        }
+    }
+}
+void Dis(Obj o, short mode = 0) {
+  for (short i = 0; i < 8; i++)
+    for (short j = 0; j < 8; j++) {
+      if (mode == 0)
+        if (shipIm[i][j]) {
+          lc.setLed(o.device, o.y + j, o.x + i, true);
+        }
+      if (mode == 1)
+        if (bulletIm[i][j]) {
+          lc.setLed(o.device, o.y + j, o.x + i, true);
+        }
+    }
+}

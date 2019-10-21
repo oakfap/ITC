@@ -1,0 +1,126 @@
+#include "LedControl.h"
+#include <ArduinoSTL.h>
+
+int up_button = 2;
+int down_button = 4;
+int left_button = 5;
+int right_button = 3;
+int start_button = 6;
+int select_button = 7;
+int joystick_button = 8;
+int joystick_axis_x = A0;
+int joystick_axis_y = A1;
+int buttons[] = {up_button, down_button, left_button, right_button, start_button, select_button, joystick_button};
+
+using namespace std;
+
+struct Obj {
+  int x, y , device = 0;
+  int image[8][8] = {   {0, 1, 0, 0, 0, 0, 0, 0},
+    {1, 1, 1, 0, 0, 0, 0, 0},
+    {0, 0, 0, 0, 0, 0, 0, 0},
+    {0, 0, 0, 0, 0, 0, 0, 0},
+    {0, 0, 0, 0, 0, 0, 0, 0},
+    {0, 0, 0, 0, 0, 0, 0, 0},
+    {0, 0, 0, 0, 0, 0, 0, 0},
+    {0, 0, 0, 0, 0, 0, 0, 0}
+  };
+};
+
+Obj ship;
+vector <Obj> Bullets;
+LedControl lc = LedControl(11, 13, 10, 4 ); // CLK,DIN,CS,Number of LED Module
+unsigned long delaytime = 500 ; // time to updates of the display
+void setup() {
+  for (int i; i < 7; i++)
+  {
+    pinMode(buttons[i], INPUT);
+    digitalWrite(buttons[i], HIGH);
+  }
+  Serial.begin(9600);
+  int devices = lc.getDeviceCount ();
+
+  for (int address = 0 ; address < devices; address ++) {
+    lc.shutdown(address, false);
+    lc.setIntensity(address, 8);
+    lc.clearDisplay(address);
+  }
+  ship.x = 6 ;
+  ship.y = 0;
+
+
+}
+
+long debo = 0;
+void loop() {
+  int devices = lc.getDeviceCount ();
+  if (!Bullets.empty()) {
+    for (int i = 0; i < Bullets.size(); i++) {
+      Del(Bullets[i]);
+      Bullets[i].x--;
+      if (Bullets[i].x == -1) {
+        Bullets[i].x = 7;
+        Bullets[i].device++;
+      }
+      Dis(Bullets[i]);
+    }
+  }
+
+  // Ship control
+  if (millis() - debo > 200) {
+    if (analogRead(joystick_axis_x) <= 300) { //  Left
+      debo = millis();
+      Del(ship);
+      ship.y++;
+    } else if (analogRead(joystick_axis_x) >= 400) { // Right
+      debo = millis();
+      Del(ship);
+      ship.y--;
+    }
+  }
+  Dis(ship);
+  if (!digitalRead(right_button)) {
+    Obj bullet;
+    bullet.y = ship.y - 1;
+    bullet.x = 5;
+    Dis(bullet);
+    bullet.image[0][0] = 1;
+    bullet.image[0][1] = 0;
+    bullet.image[1][0] = 0;
+    bullet.image[1][1] = 0;
+    bullet.image[1][2] = 0;
+    Bullets.push_back(bullet);
+    
+  }
+
+  Serial.print("UP = "), Serial.print(digitalRead(up_button)), Serial.print("\t");
+  Serial.print("DOWN = "), Serial.print(digitalRead(down_button)), Serial.print("\t");
+  Serial.print("LEFT = "), Serial.print(digitalRead(left_button)), Serial.print("\t");
+  Serial.print("RIGHT = "), Serial.print(digitalRead(right_button)), Serial.print("\t");
+  Serial.print("START = "), Serial.print(digitalRead(start_button)), Serial.print("\t");
+  Serial.print("SELECT = "), Serial.print(digitalRead(select_button)), Serial.print("\t");
+  Serial.print("ANALOG = "), Serial.print(digitalRead(joystick_button)), Serial.print("\t");
+  Serial.print("X = "), Serial.print(map(analogRead(joystick_axis_x), 0, 1000, -1, 1)); Serial.print("\t");
+  Serial.print("Y = "), Serial.print(map(analogRead(joystick_axis_y), 0, 1000, -1, 1)); Serial.print("\n");
+  Serial.print("X = "), Serial.print(analogRead(joystick_axis_x)); Serial.print("\t");
+  Serial.print("Y = "), Serial.print(analogRead(joystick_axis_y)); Serial.print("\n");
+  delay(100);
+
+}
+
+void Del(Obj o) {
+  for (int i = 0; i < 8; i++)
+    for (int j = 0; j < 8; j++) {
+      if (o.image[i][j]) {
+        lc.setLed(o.device, o.y + j, o.x + i, false);
+      }
+    }
+}
+void Dis(Obj o) {
+  for (int i = 0; i < 8; i++)
+    for (int j = 0; j < 8; j++) {
+      if (o.image[i][j]) {
+        lc.setLed(o.device, o.y + j, o.x + i, true);
+      }
+    }
+}

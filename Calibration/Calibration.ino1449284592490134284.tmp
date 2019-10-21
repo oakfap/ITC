@@ -1,0 +1,80 @@
+#include <SoftwareSerial.h>
+SoftwareSerial mySerial(10, 11);
+const int xInput = A0;
+const int yInput = A1;
+const int zInput = A2;
+const double DegreeCon = 572957795 / 10000000;
+const float xError = 1, yError = 1, zError = 1;
+const int cali = 500;
+// initialize minimum and maximum Raw Ranges for each axis
+int RawMin = 0;
+int RawMax = 1023;
+
+// Take multiple samples to reduce noise
+const int sampleSize = 10;
+
+void setup()
+{
+  analogReference(EXTERNAL);
+  Serial.begin(4800);
+  Serial.flush();
+  mySerial.begin(4800);
+  mySerial.flush();
+}
+
+void loop()
+{
+  //Read raw values
+  int xRaw = ReadAxis(xInput);
+  int yRaw = ReadAxis(yInput);
+  int zRaw = ReadAxis(zInput);
+
+  // Convert raw values to 'milli-Gs"
+  long xScaled = map(xRaw, RawMin, RawMax, -3000, 3000);
+  long yScaled = map(yRaw, RawMin, RawMax, -3000, 3000);
+  long zScaled = map(zRaw, RawMin, RawMax, -3000, 3000);
+
+  // re-scale to fractional Gs
+  float xAccel = xScaled / 1000.0;
+  float yAccel = yScaled / 1000.0;
+  float zAccel = zScaled / 1000.0;
+
+  // print Degree
+  double rad ;
+  double degree;
+  Serial.print("X, Y, Z  :: ");
+  rad =  asin(((xRaw - cali) ) / 100.0) ;
+  degree = rad * DegreeCon * xError;
+  //degree = xRaw- cali;
+  Serial.print(degree);
+  Serial.print(", ");
+  rad =  asin(((yRaw - cali) ) / 100.0) ;
+  degree = rad * DegreeCon * yError;
+  //degree = yRaw- cali;
+  Serial.print(degree);
+  Serial.print(", ");
+  rad =  asin(((zRaw - cali) ) / 100.0) ;
+  degree = rad * DegreeCon * zError;
+  //degree = zRaw- cali;
+  Serial.println(degree);
+
+  mySerial.print(555);
+  mySerial.print("\n");
+  
+  Serial.println();
+  delay(200);
+}
+
+
+// Take samples and return the average
+int ReadAxis(int axisPin)
+{
+  long reading = 0;
+  analogRead(axisPin);
+  delay(1);
+  for (int i = 0; i < sampleSize; i++)
+  {
+    reading += analogRead(axisPin);
+  }
+  return reading / sampleSize;
+}
