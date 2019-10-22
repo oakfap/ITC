@@ -25,12 +25,12 @@ struct State {
 }; // next state for inputs 0,1,2,3
 typedef const struct State SType;
 SType FSM[6] = {
-  {0x61, 3000, goS, waitS, goS, waitS, walk, walk, walk, walk},
-  {0x67, 1000, goW, goW, goW, goW, walk, walk, walk, walk},
-  {0x4C, 3000, goW, goW, waitW, waitW, walk, walk, walk, walk},
-  {0x7C, 1000, goS, goS, goS, goS, walk, walk, walk, walk},
-  {0xA4, 3000, walk, waitwalk, waitwalk, waitwalk, walk, walk, walk, walk},
-  {0x64, 0, walk, goW, goS, goW, walk, walk, walk, walk}
+  {0x61, 3000, goS, waitS, goS, waitS, walk, walk, waitS, waitS},
+  {0x67, 1000, waitS, goW, goW, goW, walk, walk, walk, walk},
+  {0x4C, 3000, goW, goW, waitW, waitW, walk, waitW, walk, waitW},
+  {0x7C, 1000, waitW, goS, goS, goS, walk, walk, walk, goS},
+  {0xA4, 3000, walk, waitwalk, waitwalk, waitwalk, walk, goW, goS, goW},
+  {0x64, 0, walk, goW, goS, goW, walk, goW, goS, goW}
 };
 unsigned short S = 4 ; // index to the current state
 // Interrupt
@@ -82,23 +82,23 @@ void loop() {
   digitalWrite(LED_WK_R, FSM[S].ST_Out & B10000000);
   delay(FSM[S].Time);
   input = 0 ;
-
-
+  
   inputW = !digitalRead (WEST_BUTTON_PIN);
   inputS = !digitalRead (SOUTH_BUTTON_PIN);
   inputWK = !digitalRead (WALK_BUTTON_PIN);
   input = inputWK * 4 + inputS * 2 + inputW;
-  if (S == 4 && (input <= 3 && input >= 1 )) {
+  
+  if (S == 4 && (input != 0 && input != 4 )) {
     int blnkTime = t1 + 1;
     int c = 1 ;
     Serial.println("BT : " + (String)blnkTime);
     while (t1 <= blnkTime ) {
       c++;
-      if(c%17==0)  // 17 is approx of 1/4 of 1 secs , By 1 secs approxly equals to 70 
-      digitalWrite(LED_WK_G , !digitalRead(LED_WK_G));
+      if (c % 17 == 0) // 17 is approx of 1/4 of 1 secs , By 1 secs approxly equals to 70
+        digitalWrite(LED_WK_G , !digitalRead(LED_WK_G));
       Serial.println("counter : " + (String)c);
     }
-    
+
   }
   S = FSM[S].Next[input];
 
