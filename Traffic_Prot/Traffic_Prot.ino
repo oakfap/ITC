@@ -25,10 +25,10 @@ struct State {
 }; // next state for inputs 0,1,2,3
 typedef const struct State SType;
 SType FSM[6] = {
-  {0x61, 3000, goS, waitS, goS, waitS, walk, walk, waitS, waitS},
-  {0x67, 1000, waitS, goW, goW, goW, walk, walk, walk, walk},
-  {0x4C, 3000, goW, goW, waitW, waitW, walk, waitW, walk, waitW},
-  {0x7C, 1000, waitW, goS, goS, goS, walk, walk, walk, goS},
+  {0x61, 3000, goS, waitS, goS, waitS, waitS, waitS, waitS, waitS},
+  {0x67, 1000, goW, goW, goW, goW, walk, walk, walk, walk},
+  {0x4C, 3000, goW, goW, waitW, waitW, waitW, waitW, waitW, waitW},
+  {0x7C, 1000, goS, goS, goS, goS, walk, walk, walk, goS},
   {0xA4, 3000, walk, waitwalk, waitwalk, waitwalk, walk, goW, goS, goW},
   {0x64, 0, walk, goW, goS, goW, walk, goW, goS, goW}
 };
@@ -72,17 +72,16 @@ ISR(TIMER1_OVF_vect) // interrupt service routine
 
 void loop() {
 
-  digitalWrite(LED_W_R,  FSM[S].ST_Out & B00000001);
+  digitalWrite(LED_W_R,   FSM[S].ST_Out & B00000001);
   digitalWrite(LED_W_Y, !(FSM[S].ST_Out & B00000010));
-  digitalWrite(LED_W_G,  FSM[S].ST_Out & B00000100);
-  digitalWrite(LED_S_R,  FSM[S].ST_Out & B00001000);
+  digitalWrite(LED_W_G,   FSM[S].ST_Out & B00000100);
+  digitalWrite(LED_S_R,   FSM[S].ST_Out & B00001000);
   digitalWrite(LED_S_Y, !(FSM[S].ST_Out & B00010000));
-  digitalWrite(LED_S_G,  FSM[S].ST_Out & B00100000);
-  digitalWrite(LED_WK_G, FSM[S].ST_Out & B01000000);
-  digitalWrite(LED_WK_R, FSM[S].ST_Out & B10000000);
+  digitalWrite(LED_S_G,   FSM[S].ST_Out & B00100000);
+  digitalWrite(LED_WK_G,  FSM[S].ST_Out & B01000000);
+  digitalWrite(LED_WK_R,  FSM[S].ST_Out & B10000000);
   delay(FSM[S].Time);
   input = 0 ;
-  
   inputW = !digitalRead (WEST_BUTTON_PIN);
   inputS = !digitalRead (SOUTH_BUTTON_PIN);
   inputWK = !digitalRead (WALK_BUTTON_PIN);
